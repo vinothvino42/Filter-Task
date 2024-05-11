@@ -10,7 +10,19 @@ import Foundation
 struct FilterResponse: Decodable {
     var data: [FilterOption]
     
-    static func getAllFilters() -> [FilterOption]? {
+    static func getFilters() -> [FilterOption] {
+        let allFilters = getAllFilters() ?? []
+        let filteredItems = allFilters.filter { $0.slug != "sort" }
+        return filteredItems
+    }
+    
+    static func getSortedOption() -> FilterOption? {
+        let allFilters = getAllFilters() ?? []
+        let sortItem = allFilters.first { $0.slug == "sort" }
+        return sortItem
+    }
+    
+    static private func getAllFilters() -> [FilterOption]? {
         if let url = Bundle.main.url(forResource: "filters", withExtension: "json") {
             do {
                 let data = try Data(contentsOf: url)
@@ -23,9 +35,12 @@ struct FilterResponse: Decodable {
         }
         return nil
     }
+    
+    
 }
 
-struct FilterOption: Decodable {
+struct FilterOption: Identifiable, Decodable {
+    var id: String { slug }
     var name: String
     var slug: String
     var taxonomy: TaxononmyResponse
@@ -33,15 +48,6 @@ struct FilterOption: Decodable {
     enum FilterOptionCodingKeys: String, CodingKey {
         case name, slug, taxonomies
     }
-}
-
-enum TaxononmyResponse {
-    case taxonomy(data: [Taxonomy])
-    case location(data: [Location])
-}
-
-enum FilterDecodingError: Error {
-    case corrupted
 }
 
 extension FilterOption {
@@ -58,6 +64,33 @@ extension FilterOption {
             throw FilterDecodingError.corrupted
         }
     }
+}
+
+enum TaxononmyResponse {
+    case taxonomy(data: [Taxonomy])
+    case location(data: [Location])
+}
+
+extension TaxononmyResponse {
+    func getTaxonomies(isDefaultNeeded: Bool = false) -> [Taxonomy] {
+        if case .taxonomy(var lists) = self {
+            let isAnyItemNotSelected = lists.filter { $0.isSelected == true }.isEmpty
+            
+            // Setting first item as default one
+            if (isAnyItemNotSelected && isDefaultNeeded) {
+                lists[0].isSelected = true
+            }
+            return lists
+        } else if case .location(let lists) = self {
+            let allTaxonomies = lists.flatMap { $0.locations }
+            return allTaxonomies
+        }
+        return []
+    }
+}
+
+enum FilterDecodingError: Error {
+    case corrupted
 }
 
 // Model Diff
