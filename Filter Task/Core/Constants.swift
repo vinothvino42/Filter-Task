@@ -9,4 +9,5 @@ import Foundation
 
 enum Constants {
     static let navTitle: String = "Filter Options"
+    static let sortBy: String = "Sort by"
 }
